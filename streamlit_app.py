@@ -55,7 +55,10 @@ if uploaded_file is not None:
     if missing_columns:
         st.error(f"Missing columns in the CSV: {', '.join(missing_columns)}")
     else:
-        # Generate email content and send emails
+        # Placeholder for generated email contents
+        generated_emails = []
+
+        # Generate email content for each lead
         for index, row in df.iterrows():
             first_name = row['FirstName']
             last_name = row['LastName']
@@ -75,11 +78,32 @@ if uploaded_file is not None:
                 # Prepare the subject
                 subject = f"Sales Proposal for {product} at {company}"
 
-                # Send the email
-                send_email(subject, email_content, email)
+                # Store the generated email for review
+                generated_emails.append({
+                    'Name': f"{first_name} {last_name}",
+                    'Email': email,
+                    'Subject': subject,
+                    'Content': email_content
+                })
+                
             except Exception as e:
-                st.error(f"Error generating content or sending email to {email}: {e}")
-        
-        st.success("All emails have been processed.")
+                st.error(f"Error generating content for {first_name} {last_name}: {e}")
+
+        if generated_emails:
+            st.write("Generated Email Campaigns:")
+            for email in generated_emails:
+                st.subheader(f"Email to {email['Name']} ({email['Email']})")
+                st.write(f"**Subject:** {email['Subject']}")
+                st.write(f"**Content:** {email['Content']}")
+                st.markdown("---")
+
+            # Button to trigger sending emails
+            send_button = st.button("Send Emails")
+
+            if send_button:
+                for email in generated_emails:
+                    send_email(email['Subject'], email['Content'], email['Email'])
+                st.success("All emails have been sent.")
+
 else:
     st.info("Please upload a CSV file with leads.")
