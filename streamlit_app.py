@@ -1,110 +1,85 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
 import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from io import StringIO
+from email.mime.text import MIMEText
+import google.generativeai as genai
 
-# Configure the API key securely from Streamlit's secrets
+# Configure Google API key from Streamlit's secrets
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-# Email credentials for sending emails
-EMAIL_SENDER = st.secrets["EMAIL_SENDER"]
-EMAIL_PASSWORD = st.secrets["EMAIL_PASSWORD"]
-SMTP_SERVER = 'smtp.gmail.com'
-SMTP_PORT = 587
+# Streamlit app title
+st.title("AI-Powered Bulk Email Campaign")
 
-# Function to load and display CSV
-def load_csv(file):
+# File upload for CSV
+uploaded_file = st.file_uploader("Upload CSV with Leads", type=["csv"])
+
+# Function to send email via Brevo (SMTP)
+def send_email(subject, body, to_email):
+    sender_email = st.secrets["EMAIL_SENDER"]
+    sender_password = st.secrets["EMAIL_PASSWORD"]
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(body, 'plain'))
+
     try:
-        df = pd.read_csv(file)
-        return df
-    except Exception as e:
-        st.error(f"Error loading CSV: {e}")
-        return None
-
-# Function to generate sales proposal using AI
-def generate_proposal(lead_name):
-    try:
-        prompt = f"Generate a personalized sales proposal for {lead_name}, a potential client for our product."
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        st.error(f"Error generating proposal: {e}")
-        return None
-
-# Function to send email
-def send_email(recipient_email, subject, body):
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_SENDER
-        msg['To'] = recipient_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
-
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        # Connect to Brevo's SMTP server
+        with smtplib.SMTP('smtp-relay.brevo.com', 587) as server:
             server.starttls()
-            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            server.sendmail(EMAIL_SENDER, recipient_email, msg.as_string())
-
-        return True
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, to_email, msg.as_string())
+            st.success(f"Email sent to {to_email}")
     except Exception as e:
-        st.error(f"Error sending email to {recipient_email}: {e}")
-        return False
+        st.error(f"Failed to send email to {to_email}: {e}")
 
-# Streamlit UI for the web app
-st.title("Bulk Email Campaign with AI Sales Proposals")
-st.write("Upload your CSV file with lead details (name, email), and send personalized proposals.")
+# Process the CSV file
+if uploaded_file is not None:
+    # Read the uploaded CSV
+    df = pd.read_csv(uploaded_file)
+    
+    # Show the first few rows of the CSV for verification
+    st.write("CSV Data Preview:")
+    st.write(df.head())
+    
+    # Clean up column names (strip extra spaces)
+    df.columns = df.columns.str.strip()
 
-# File uploader for CSV
-uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
+    # Check if required columns exist
+    required_columns = ['FirstName', 'LastName', 'Email', 'Company', 'Product']
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    
+    if missing_columns:
+        st.error(f"Missing columns in the CSV: {', '.join(missing_columns)}")
+    else:
+        # Generate email content and send emails
+        for index, row in df.iterrows():
+            first_name = row['FirstName']
+            last_name = row['LastName']
+            email = row['Email']
+            company = row['Company']
+            product = row['Product']
 
-if uploaded_file:
-    df = load_csv(uploaded_file)
-    if df is not None:
-        st.write("Leads Data:")
-        st.write(df)
-
-        # Button to start campaign
-        if st.button("Start Campaign"):
-            email_sent = 0
-            total_leads = len(df)
-            failed_emails = []
-
-            # Loop through leads and send emails
-            for _, row in df.iterrows():
-                lead_name = row['Name']
-                lead_email = row['Email']
+            # AI-generated email proposal content
+            prompt = f"Generate a sales proposal email for {first_name} {last_name}, working at {company}, interested in {product}. Keep it professional and friendly."
+            
+            try:
+                # Generate content using Google Generative AI
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content(prompt)
+                email_content = response.text
                 
-                proposal = generate_proposal(lead_name)
-                if proposal:
-                    subject = "Your Personalized Sales Proposal"
-                    body = f"Dear {lead_name},\n\n{proposal}\n\nBest Regards,\nYour Company"
-                    
-                    if send_email(lead_email, subject, body):
-                        email_sent += 1
-                    else:
-                        failed_emails.append(lead_email)
-                
-                # Display status after every email sent
-                st.write(f"Sent email to {lead_name} ({lead_email})")
+                # Prepare the subject
+                subject = f"Sales Proposal for {product} at {company}"
 
-            # Display Campaign Stats
-            st.write(f"Campaign completed!")
-            st.write(f"Total leads: {total_leads}")
-            st.write(f"Emails sent successfully: {email_sent}")
-            st.write(f"Failed to send to: {failed_emails}")
-
-# Display the prompt for AI generation
-prompt = st.text_input("Customize AI prompt:", "Best alternatives to JavaScript?")
-
-if st.button("Generate Response"):
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
-        st.write("AI Generated Response:")
-        st.write(response.text)
-    except Exception as e:
-        st.error(f"Error: {e}")
+                # Send the email
+                send_email(subject, email_content, email)
+            except Exception as e:
+                st.error(f"Error generating content or sending email to {email}: {e}")
+        
+        st.success("All emails have been processed.")
+else:
+    st.info("Please upload a CSV file with leads.")
