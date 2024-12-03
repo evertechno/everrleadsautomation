@@ -5,7 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import google.generativeai as genai
 
-# Configure Google API key from Streamlit's secrets
+# Configure Google API key from Streamlit's secrets (for Generative AI)
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Streamlit app title
@@ -27,10 +27,10 @@ def send_email(subject, body, to_email):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        # Connect to Brevo's SMTP server
+        # Connect to Brevo's SMTP server (smtp-relay.brevo.com)
         with smtplib.SMTP('smtp-relay.brevo.com', 587) as server:
             server.starttls()  # Start TLS encryption
-            server.login(sender_email, sender_password)  # Login with email and API key
+            server.login(sender_email, sender_password)  # Login with email and SMTP API key (password)
             server.sendmail(sender_email, to_email, msg.as_string())  # Send email
             st.success(f"Email sent to {to_email}")
     except Exception as e:
