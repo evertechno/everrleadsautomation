@@ -49,7 +49,8 @@ if uploaded_file is not None:
     df.columns = df.columns.str.strip()
 
     # Check if required columns exist
-    required_columns = ['FirstName', 'LastName', 'Email', 'Company', 'Product']
+    required_columns = ['FirstName', 'LastName', 'Email', 'Company', 'Product', 
+                        'YourName', 'YourTitle', 'YourCompanyName', 'YourPhoneNumber', 'YourEmailAddress', 'YourWebsite']
     missing_columns = [col for col in required_columns if col not in df.columns]
     
     if missing_columns:
@@ -66,9 +67,17 @@ if uploaded_file is not None:
             company = row['Company']
             product = row['Product']
 
-            # AI-generated email proposal content
-            prompt = f"Generate a sales proposal email for {first_name} {last_name}, working at {company}, interested in {product}. Keep it professional and friendly."
-            
+            # Personal details
+            your_name = row['YourName']
+            your_title = row['YourTitle']
+            your_company_name = row['YourCompanyName']
+            your_phone_number = row['YourPhoneNumber']
+            your_email_address = row['YourEmailAddress']
+            your_website = row['YourWebsite']
+
+            # AI-generated email proposal content with placeholders replaced
+            prompt = f"Generate a sales proposal email for {first_name} {last_name}, working at {company}, interested in {product}. Keep it professional and friendly. Use the following signature for the email:\n\nName: {your_name}\nTitle: {your_title}\nCompany: {your_company_name}\nPhone: {your_phone_number}\nEmail: {your_email_address}\nWebsite: {your_website}"
+
             try:
                 # Generate content using Google Generative AI
                 model = genai.GenerativeModel('gemini-1.5-flash')
