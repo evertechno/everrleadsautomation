@@ -9,7 +9,7 @@ import google.generativeai as genai
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Streamlit app title
-st.title("EasySales:AI-Powered Bulk Email Campaign creator")
+st.title("EasySales: AI-Powered Bulk Email Campaign creator")
 
 # File upload for CSV
 uploaded_file = st.file_uploader("Upload CSV with Leads", type=["csv"])
