@@ -29,9 +29,9 @@ def send_email(subject, body, to_email):
     try:
         # Connect to Brevo's SMTP server
         with smtplib.SMTP('smtp-relay.brevo.com', 587) as server:
-            server.starttls()
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, to_email, msg.as_string())
+            server.starttls()  # Start TLS encryption
+            server.login(sender_email, sender_password)  # Login with email and API key
+            server.sendmail(sender_email, to_email, msg.as_string())  # Send email
             st.success(f"Email sent to {to_email}")
     except Exception as e:
         st.error(f"Failed to send email to {to_email}: {e}")
